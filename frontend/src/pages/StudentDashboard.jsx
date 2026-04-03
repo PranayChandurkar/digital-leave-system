@@ -2,7 +2,6 @@ import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import { format } from 'date-fns';
-
 import { generateLeavePDF } from '../utils/pdfGenerator';
 
 const StudentDashboard = () => {
@@ -10,10 +9,12 @@ const StudentDashboard = () => {
     const [leaves, setLeaves] = useState([]);
     const [isApplying, setIsApplying] = useState(false);
     const [editingLeave, setEditingLeave] = useState(null);
-    
+
     // Form state
     const [type, setType] = useState('Medical');
     const [content, setContent] = useState('');
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
 
     useEffect(() => {
         fetchLeaves();
@@ -39,10 +40,27 @@ const StudentDashboard = () => {
             setIsApplying(false);
             setEditingLeave(null);
             setContent('');
+            setAiPrompt('');
             setType('Medical');
             fetchLeaves();
         } catch (error) {
             alert(error.response?.data?.message || 'Error saving leave');
+        }
+    };
+
+    const handleGenerateAI = async () => {
+        if (!aiPrompt.trim()) {
+            alert('Please enter a short reason for your leave first.');
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const { data } = await api.post('/leaves/generate', { prompt: aiPrompt });
+            setContent(data.content);
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to generate AI content');
+        } finally {
+            setIsGenerating(false);
         }
     };
 
@@ -62,119 +80,229 @@ const StudentDashboard = () => {
             alert('Failed to cancel leave');
         }
     };
-    
+
     const downloadPDF = (leave) => {
-        // Hydrate leave with student info as studentId might not be populated in my-leaves route
         const leaveWithStudent = { ...leave, studentId: { name: user.name, email: user.email } };
         generateLeavePDF(leaveWithStudent);
     };
 
+    // Helper for stats
+    const counts = {
+        total: leaves.length,
+        pending: leaves.filter(l => l.status === 'Pending').length,
+        approved: leaves.filter(l => l.status === 'Approved').length,
+        forwarded: leaves.filter(l => l.status === 'Forwarded').length,
+    };
+
+    const getTypeBadgeClass = (t) =>
+        t === 'Important' ? 'badge badge-important' :
+        t === 'Medical' ? 'badge badge-medical' :
+        'badge badge-less';
+
+    const getStatusBadgeClass = (s) =>
+        s === 'Pending' ? 'badge badge-pending' :
+        s === 'Forwarded' ? 'badge badge-forwarded' :
+        s === 'Approved' ? 'badge badge-approved' :
+        'badge badge-rejected';
+
+    const getLeaveCardClass = (t) =>
+        t === 'Important' ? 'leave-card important' :
+        t === 'Medical' ? 'leave-card medical' :
+        'leave-card less-important';
+
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900">
-            <header className="bg-white shadow">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                    <h1 className="text-xl font-bold">Student Dashboard</h1>
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium">{user.name}</span>
-                        <button onClick={logout} className="text-sm text-red-600 hover:text-red-800">Logout</button>
+        <div className="page-bg">
+            {/* Header */}
+            <header className="college-header">
+                <div className="college-header-inner">
+                    <div className="college-logo-area">
+                        <div className="college-logo-icon">🎓</div>
+                        <div className="college-logo-text">
+                            <span className="app-title">LeaveSync</span>
+                            <span className="app-subtitle">Student Portal</span>
+                        </div>
+                    </div>
+                    <div className="header-user-area">
+                        <div className="user-chip">
+                            <div className="user-avatar">{user.name?.[0]}</div>
+                            <span className="user-name">{user.name}</span>
+                        </div>
+                        <span className="role-tag">🧑‍🎓 Student</span>
+                        <button onClick={logout} className="btn-logout">Logout</button>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 py-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-lg font-semibold border-b pb-2">My Leave Applications</h2>
-                    <button 
-                        onClick={() => setIsApplying(true)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
-                    >
-                        Apply Leave
-                    </button>
+            <main className="main-content">
+                {/* Stats Bar */}
+                <div className="stats-bar">
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: '#eef2ff' }}>📋</div>
+                        <div className="stat-info">
+                            <div className="stat-value">{counts.total}</div>
+                            <div className="stat-label">Total Applications</div>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: '#fef9c3' }}>⏳</div>
+                        <div className="stat-info">
+                            <div className="stat-value">{counts.pending}</div>
+                            <div className="stat-label">Pending Review</div>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: '#f3e8ff' }}>📤</div>
+                        <div className="stat-info">
+                            <div className="stat-value">{counts.forwarded}</div>
+                            <div className="stat-label">Forwarded to HOD</div>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: '#dcfce7' }}>✅</div>
+                        <div className="stat-info">
+                            <div className="stat-value">{counts.approved}</div>
+                            <div className="stat-label">Approved</div>
+                        </div>
+                    </div>
                 </div>
 
+                {/* Section Header */}
+                <div className="section-header">
+                    <h2 className="section-title">My Leave Applications</h2>
+                    {!isApplying && (
+                        <button
+                            onClick={() => setIsApplying(true)}
+                            className="btn btn-primary"
+                        >
+                            ✏️ Apply for Leave
+                        </button>
+                    )}
+                </div>
+
+                {/* Apply Form */}
                 {isApplying && (
-                    <div className="mb-8 bg-white p-6 rounded-lg shadow-md border">
-                        <h3 className="text-lg font-medium mb-4">{editingLeave ? 'Edit Leave' : 'New Leave Application'}</h3>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Type of Leave</label>
-                                <select 
-                                    className="mt-1 block w-full p-2 border rounded-md"
+                    <div className="form-card">
+                        <div className="form-card-title">
+                            {editingLeave ? '✏️ Edit Leave Application' : '📝 New Leave Application'}
+                        </div>
+                        <form onSubmit={handleSubmit}>
+                            <div className="form-group">
+                                <label className="form-label">Type of Leave</label>
+                                <select
+                                    className="form-control"
                                     value={type}
                                     onChange={(e) => setType(e.target.value)}
                                 >
-                                    <option value="Medical">Medical</option>
-                                    <option value="Important">Important</option>
-                                    <option value="Less Important">Less Important</option>
+                                    <option value="Medical">🏥 Medical</option>
+                                    <option value="Important">🔴 Important</option>
+                                    <option value="Less Important">🔵 Less Important</option>
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Leave Letter (Write formally)</label>
+
+                            {/* AI Box */}
+                            <div className="ai-box">
+                                <div className="ai-box-label">✨ AI Leave Assistant <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#818cf8' }}>(Optional)</span></div>
+                                <div className="ai-box-hint">Stuck on what to write? Give us a quick reason and we'll draft a formal letter for you!</div>
+                                <div className="ai-input-row">
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="e.g. I have a fever and need 2 days off"
+                                        value={aiPrompt}
+                                        onChange={(e) => setAiPrompt(e.target.value)}
+                                        disabled={isGenerating}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleGenerateAI}
+                                        disabled={isGenerating}
+                                        className="btn btn-primary"
+                                        style={{ flexShrink: 0 }}
+                                    >
+                                        {isGenerating ? '⏳ Generating...' : '✨ Generate'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Leave Letter</label>
                                 <textarea
                                     required
-                                    className="mt-1 block w-full p-2 border rounded-md h-40 font-serif"
+                                    className="form-control"
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
-                                    placeholder="Respected Sir/Madam,&#10;I am writing to request leave..."
+                                    placeholder={"Respected Sir/Madam,\nI am writing to request leave for..."}
                                 ></textarea>
                             </div>
-                            <div className="flex justify-end gap-3">
+
+                            <div className="form-actions">
                                 <button
                                     type="button"
-                                    onClick={() => { setIsApplying(false); setEditingLeave(null); setContent(''); setType('Medical'); }}
-                                    className="px-4 py-2 text-gray-600 border rounded hover:bg-gray-100"
+                                    onClick={() => {
+                                        setIsApplying(false);
+                                        setEditingLeave(null);
+                                        setContent('');
+                                        setAiPrompt('');
+                                        setType('Medical');
+                                    }}
+                                    className="btn btn-ghost"
                                 >
                                     Cancel
                                 </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
-                                    {editingLeave ? 'Update Application' : 'Submit Application'}
+                                <button type="submit" className="btn btn-primary">
+                                    {editingLeave ? '💾 Update Application' : '🚀 Submit Application'}
                                 </button>
                             </div>
                         </form>
                     </div>
                 )}
 
-                <div className="space-y-4">
+                {/* Leave List */}
+                <div className="leave-list">
                     {leaves.length === 0 ? (
-                        <p className="text-gray-500 text-center py-8">No leave applications found.</p>
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📭</div>
+                            <p className="empty-state-text">No leave applications yet. Click <strong>"Apply for Leave"</strong> to get started!</p>
+                        </div>
                     ) : (
                         leaves.map(leave => (
-                            <div key={leave._id} className="bg-white p-6 rounded-lg shadow-sm border flex flex-col md:flex-row gap-6 justify-between">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                            leave.type === 'Important' ? 'bg-red-100 text-red-700' :
-                                            leave.type === 'Medical' ? 'bg-orange-100 text-orange-700' :
-                                            'bg-blue-100 text-blue-700'
-                                        }`}>{leave.type}</span>
-                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                            leave.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                                            leave.status === 'Forwarded' ? 'bg-purple-100 text-purple-700' :
-                                            leave.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                                            'bg-gray-100 text-gray-700'
-                                        }`}>{leave.status}</span>
-                                        <span className="text-sm text-gray-500">{format(new Date(leave.createdAt), 'PPpp')}</span>
+                            <div key={leave._id} className={getLeaveCardClass(leave.type)}>
+                                <div className="leave-card-body">
+                                    <div className="leave-card-meta">
+                                        <span className={getTypeBadgeClass(leave.type)}>{leave.type}</span>
+                                        <span className={getStatusBadgeClass(leave.status)}>{leave.status}</span>
+                                        <span className="leave-card-date">🕐 {format(new Date(leave.createdAt), 'PPpp')}</span>
                                     </div>
-                                    <div className="bg-gray-50 p-4 rounded text-sm text-gray-800 whitespace-pre-wrap font-serif border border-gray-100">
-                                        {leave.content}
-                                    </div>
+                                    <div className="leave-card-content">{leave.content}</div>
                                     {leave.comments && (
-                                        <div className="mt-3 text-sm text-gray-600 bg-yellow-50 p-2 border-l-4 border-yellow-400">
-                                            <strong>Reviewer Comment:</strong> {leave.comments}
+                                        <div className="leave-card-comment">
+                                            <strong>💬 Reviewer Comment:</strong> {leave.comments}
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex md:flex-col gap-2 justify-start items-end md:w-32">
+                                <div className="leave-card-actions">
                                     {leave.status === 'Pending' && (
                                         <>
-                                            <button onClick={() => handleEdit(leave)} className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 w-full text-center">Edit</button>
-                                            <button onClick={() => handleCancel(leave._id)} className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 w-full text-center">Cancel</button>
+                                            <button
+                                                onClick={() => handleEdit(leave)}
+                                                className="btn btn-ghost btn-sm btn-full"
+                                            >
+                                                ✏️ Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleCancel(leave._id)}
+                                                className="btn btn-danger btn-sm btn-full"
+                                            >
+                                                🗑️ Cancel
+                                            </button>
                                         </>
                                     )}
-                                    <button onClick={() => downloadPDF(leave)} className="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 w-full text-center">Download PDF</button>
+                                    <button
+                                        onClick={() => downloadPDF(leave)}
+                                        className="btn btn-primary btn-sm btn-full"
+                                    >
+                                        📄 PDF
+                                    </button>
                                 </div>
                             </div>
                         ))

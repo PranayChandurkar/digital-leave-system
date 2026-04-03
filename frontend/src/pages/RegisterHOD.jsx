@@ -20,51 +20,69 @@ const RegisterHOD = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-md">
-                <h1 className="text-2xl font-bold text-center mb-6">Initial HOD Setup</h1>
-                {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Name</label>
+        <div className="login-page" style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #c026d3 100%)' }}>
+            <div className="login-card">
+                {/* Brand */}
+                <div className="login-brand">
+                    <div className="login-brand-icon" style={{ background: 'linear-gradient(135deg, #7c3aed, #c026d3)' }}>🏛️</div>
+                    <h1 className="login-title">HOD Initial Setup</h1>
+                    <p className="login-subtitle">Register the Head of Department account</p>
+                </div>
+
+                {/* Error */}
+                {error && (
+                    <div className="login-error">
+                        <span>⚠️</span> {error}
+                    </div>
+                )}
+
+                {/* Form */}
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label className="form-label">Full Name</label>
                         <input
                             type="text"
                             required
-                            className="w-full mt-1 p-2 border rounded-md"
+                            className="form-control"
+                            placeholder="Dr. Firstname Lastname"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <div className="form-group">
+                        <label className="form-label">Email Address</label>
                         <input
                             type="email"
                             required
-                            className="w-full mt-1 p-2 border rounded-md"
+                            className="form-control"
+                            placeholder="hod@college.edu"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <div className="form-group">
+                        <label className="form-label">Password</label>
                         <input
                             type="password"
                             required
-                            className="w-full mt-1 p-2 border rounded-md"
+                            className="form-control"
+                            placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                         />
                     </div>
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700"
+                        className="btn btn-purple btn-full"
+                        style={{ marginTop: '0.5rem', background: 'linear-gradient(135deg, #7c3aed, #9333ea)' }}
                     >
-                        Register
+                        🏛️ Register as HOD
                     </button>
-                    <div className="text-sm text-center mt-4">
-                        <a href="/login" className="text-blue-600 hover:underline">Back to Login</a>
-                    </div>
                 </form>
+
+                <div className="login-link">
+                    Already have an account? <a href="/login">← Back to Login</a>
+                </div>
             </div>
         </div>
     );

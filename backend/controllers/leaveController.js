@@ -1,6 +1,7 @@
 const Leave = require('../models/Leave');
 const User = require('../models/User');
 const { sendEmail } = require('../services/emailService');
+const { GoogleGenAI } = require('@google/genai');
 
 // @desc    Submit a new leave application
 // @route   POST /api/leaves
@@ -171,4 +172,40 @@ const processLeave = async (req, res) => {
     }
 };
 
-module.exports = { submitLeave, editLeave, cancelLeave, getMyLeaves, getQueue, processLeave };
+// @desc    Generate formal leave letter using AI
+// @route   POST /api/leaves/generate
+// @access  Private (Student)
+const generateLeaveText = async (req, res) => {
+    try {
+        const { prompt } = req.body;
+        if (!prompt) return res.status(400).json({ message: 'Prompt is required' });
+
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) return res.status(500).json({ message: 'GEMINI_API_KEY is not configured on the server. Please add it to .env files.' });
+
+        const ai = new GoogleGenAI({ apiKey });
+        
+        const systemInstruction = `You are an expert at writing formal, polite, and detailed student leave application letters.
+The user will provide a short reason.
+Your response MUST be a fully fleshed-out formal application letter of at least two paragraphs.
+Start with "Respected Sir/Madam,".
+Elaborate appropriately on the provided reason in a professional tone, explaining how you will catch up on missed work or ensure minimum disruption to your studies.
+Conclude with a proper closing like "Thanking you in advance for your understanding," and "Yours obediently,".
+CRITICAL: NEVER use placeholder brackets like [Start Date], [End Date], [Name], or [Reason]. Instead, write naturally (e.g., "for the required duration", "during my absence"). Do not leave any fill-in-the-blanks. Provide ONLY the letter content.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Reason for leave: ${prompt}. Please generate the formal letter.`,
+            config: {
+                systemInstruction: systemInstruction,
+            }
+        });
+
+        res.json({ content: response.text });
+    } catch (error) {
+        console.error('AI Generation Error:', error);
+        res.status(500).json({ message: 'Failed to generate content with AI' });
+    }
+};
+
+module.exports = { submitLeave, editLeave, cancelLeave, getMyLeaves, getQueue, processLeave, generateLeaveText };

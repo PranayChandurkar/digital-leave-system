@@ -2,15 +2,14 @@ import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import { format } from 'date-fns';
-
 import { generateLeavePDF } from '../utils/pdfGenerator';
 
 const CoordinatorDashboard = () => {
     const { user, logout } = useContext(AuthContext);
     const [leaves, setLeaves] = useState([]);
-    const [actionModal, setActionModal] = useState(null); // { leaveId, action }
+    const [actionModal, setActionModal] = useState(null);
     const [comments, setComments] = useState('');
-    
+
     // User Creation
     const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [newUserName, setNewUserName] = useState('');
@@ -24,7 +23,6 @@ const CoordinatorDashboard = () => {
     const fetchLeaves = async () => {
         try {
             const { data } = await api.get('/leaves/queue');
-            // Highlight important by sorting them to the top
             const sorted = data.sort((a, b) => {
                 if (a.type === 'Important' && b.type !== 'Important') return -1;
                 if (a.type !== 'Important' && b.type === 'Important') return 1;
@@ -70,128 +68,228 @@ const CoordinatorDashboard = () => {
         }
     };
 
-    const downloadPDF = (leave) => {
-        generateLeavePDF(leave);
+    const getTypeBadgeClass = (t) =>
+        t === 'Important' ? 'badge badge-important' :
+        t === 'Medical' ? 'badge badge-medical' :
+        'badge badge-less';
+
+    const getStatusBadgeClass = (s) =>
+        s === 'Pending' ? 'badge badge-pending' :
+        s === 'Forwarded' ? 'badge badge-forwarded' :
+        s === 'Approved' ? 'badge badge-approved' :
+        'badge badge-rejected';
+
+    const getLeaveCardClass = (t) =>
+        t === 'Important' ? 'leave-card important' :
+        t === 'Medical' ? 'leave-card medical' :
+        'leave-card less-important';
+
+    const counts = {
+        total: leaves.length,
+        pending: leaves.filter(l => l.status === 'Pending').length,
+        important: leaves.filter(l => l.type === 'Important').length,
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900">
-            <header className="bg-white shadow border-b-4 border-blue-500">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                    <h1 className="text-xl font-bold">Coordinator Dashboard</h1>
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium">{user.name}</span>
-                        <button onClick={logout} className="text-sm text-red-600 hover:text-red-800">Logout</button>
+        <div className="page-bg">
+            {/* Header */}
+            <header className="college-header" style={{ background: 'linear-gradient(135deg, #059669 0%, #0d9488 50%, #0891b2 100%)' }}>
+                <div className="college-header-inner">
+                    <div className="college-logo-area">
+                        <div className="college-logo-icon">📋</div>
+                        <div className="college-logo-text">
+                            <span className="app-title">LeaveSync</span>
+                            <span className="app-subtitle">Coordinator Portal</span>
+                        </div>
+                    </div>
+                    <div className="header-user-area">
+                        <div className="user-chip">
+                            <div className="user-avatar" style={{ background: '#f59e0b' }}>{user.name?.[0]}</div>
+                            <span className="user-name">{user.name}</span>
+                        </div>
+                        <span className="role-tag">👨‍🏫 Coordinator</span>
+                        <button onClick={logout} className="btn-logout">Logout</button>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 py-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-lg font-semibold border-b pb-2">Student Leave Queue</h2>
-                    <button 
+            <main className="main-content">
+                {/* Stats */}
+                <div className="stats-bar">
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: '#ecfdf5' }}>📥</div>
+                        <div className="stat-info">
+                            <div className="stat-value">{counts.total}</div>
+                            <div className="stat-label">In Queue</div>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: '#fef9c3' }}>⏳</div>
+                        <div className="stat-info">
+                            <div className="stat-value">{counts.pending}</div>
+                            <div className="stat-label">Awaiting Action</div>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: '#fee2e2' }}>🚨</div>
+                        <div className="stat-info">
+                            <div className="stat-value">{counts.important}</div>
+                            <div className="stat-label">Important / Urgent</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section Header */}
+                <div className="section-header">
+                    <h2 className="section-title">Student Leave Queue</h2>
+                    <button
                         onClick={() => setIsCreatingUser(!isCreatingUser)}
-                        className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition"
+                        className={`btn ${isCreatingUser ? 'btn-ghost' : 'btn-success'}`}
                     >
-                        {isCreatingUser ? 'Cancel' : 'Add New Student'}
+                        {isCreatingUser ? '✕ Cancel' : '➕ Add New Student'}
                     </button>
                 </div>
 
+                {/* Create Student Form */}
                 {isCreatingUser && (
-                    <div className="mb-8 bg-white p-6 rounded-lg shadow-md border border-green-200">
-                        <h3 className="text-lg font-medium mb-4">Create Student Account</h3>
-                        <form onSubmit={handleCreateUser} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium">Name</label>
-                                    <input type="text" required className="w-full mt-1 p-2 border rounded" value={newUserName} onChange={e => setNewUserName(e.target.value)} />
+                    <div className="form-card">
+                        <div className="form-card-title">🧑‍🎓 Create Student Account</div>
+                        <form onSubmit={handleCreateUser}>
+                            <div className="form-grid-3">
+                                <div className="form-group">
+                                    <label className="form-label">Full Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="form-control"
+                                        placeholder="Student Name"
+                                        value={newUserName}
+                                        onChange={e => setNewUserName(e.target.value)}
+                                    />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium">Email</label>
-                                    <input type="email" required className="w-full mt-1 p-2 border rounded" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} />
+                                <div className="form-group">
+                                    <label className="form-label">Email</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        className="form-control"
+                                        placeholder="student@college.edu"
+                                        value={newUserEmail}
+                                        onChange={e => setNewUserEmail(e.target.value)}
+                                    />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium">Password</label>
-                                    <input type="password" required className="w-full mt-1 p-2 border rounded" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} />
+                                <div className="form-group">
+                                    <label className="form-label">Password</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        className="form-control"
+                                        placeholder="••••••••"
+                                        value={newUserPassword}
+                                        onChange={e => setNewUserPassword(e.target.value)}
+                                    />
                                 </div>
                             </div>
-                            <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded">Create Student</button>
+                            <div className="form-actions">
+                                <button type="submit" className="btn btn-success">🎉 Create Student</button>
+                            </div>
                         </form>
                     </div>
                 )}
 
-                {actionModal && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-                            <h3 className="text-lg font-bold mb-4">
-                                Confirm {actionModal.action}
-                            </h3>
-                            <form onSubmit={handleProcess}>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700">Comments (Optional)</label>
-                                    <textarea
-                                        className="w-full mt-1 p-2 border rounded h-24"
-                                        value={comments}
-                                        onChange={(e) => setComments(e.target.value)}
-                                        placeholder="Add any reasoning or remarks..."
-                                    ></textarea>
-                                </div>
-                                <div className="flex justify-end gap-3">
-                                    <button type="button" onClick={() => setActionModal(null)} className="px-4 py-2 text-gray-600 border rounded hover:bg-gray-100">Cancel</button>
-                                    <button type="submit" className={`px-4 py-2 text-white rounded ${
-                                        actionModal.action === 'Approve' ? 'bg-green-600 hover:bg-green-700' :
-                                        actionModal.action === 'Reject' ? 'bg-red-600 hover:bg-red-700' :
-                                        'bg-purple-600 hover:bg-purple-700'
-                                    }`}>
-                                        {actionModal.action} Leave
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
-                <div className="space-y-4">
+                {/* Leave List */}
+                <div className="leave-list">
                     {leaves.length === 0 ? (
-                        <p className="text-gray-500 text-center py-8">Queue is empty.</p>
+                        <div className="empty-state">
+                            <div className="empty-state-icon">✅</div>
+                            <p className="empty-state-text">All clear! No pending applications in the queue.</p>
+                        </div>
                     ) : (
                         leaves.map(leave => (
-                            <div key={leave._id} className={`bg-white p-6 rounded-lg shadow-sm border flex flex-col md:flex-row gap-6 justify-between ${leave.type === 'Important' ? 'border-l-4 border-l-red-500' : ''}`}>
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <span className="font-semibold text-gray-900">{leave.studentId.name}</span>
-                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                            leave.type === 'Important' ? 'bg-red-100 text-red-700 font-bold animate-pulse' :
-                                            leave.type === 'Medical' ? 'bg-orange-100 text-orange-700' :
-                                            'bg-blue-100 text-blue-700'
-                                        }`}>{leave.type}</span>
-                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                            leave.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                                            leave.status === 'Forwarded' ? 'bg-purple-100 text-purple-700' :
-                                            leave.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                                            'bg-gray-100 text-gray-700'
-                                        }`}>{leave.status}</span>
-                                        <span className="text-sm text-gray-500">{format(new Date(leave.createdAt), 'PPpp')}</span>
+                            <div key={leave._id} className={getLeaveCardClass(leave.type)}>
+                                <div className="leave-card-body">
+                                    <div className="leave-card-student">{leave.studentId?.name || 'Unknown Student'}</div>
+                                    <div className="leave-card-meta">
+                                        <span className={getTypeBadgeClass(leave.type)}>{leave.type}</span>
+                                        <span className={getStatusBadgeClass(leave.status)}>{leave.status}</span>
+                                        <span className="leave-card-date">🕐 {format(new Date(leave.createdAt), 'PPpp')}</span>
                                     </div>
-                                    <div className="bg-gray-50 p-4 rounded text-sm text-gray-800 whitespace-pre-wrap font-serif border border-gray-100">
-                                        {leave.content}
-                                    </div>
+                                    <div className="leave-card-content">{leave.content}</div>
                                 </div>
-                                <div className="flex md:flex-col gap-2 justify-start items-end md:w-32">
+                                <div className="leave-card-actions">
                                     {leave.status === 'Pending' && (
                                         <>
-                                            <button onClick={() => setActionModal({ leaveId: leave._id, action: 'Approve' })} className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 w-full text-center font-medium">Approve</button>
-                                            <button onClick={() => setActionModal({ leaveId: leave._id, action: 'Forward' })} className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded hover:bg-purple-200 w-full text-center font-medium">Forward to HOD</button>
-                                            <button onClick={() => setActionModal({ leaveId: leave._id, action: 'Reject' })} className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 w-full text-center font-medium">Reject</button>
+                                            <button
+                                                onClick={() => setActionModal({ leaveId: leave._id, action: 'Approve' })}
+                                                className="btn btn-success btn-sm btn-full"
+                                            >
+                                                ✅ Approve
+                                            </button>
+                                            <button
+                                                onClick={() => setActionModal({ leaveId: leave._id, action: 'Forward' })}
+                                                className="btn btn-purple btn-sm btn-full"
+                                            >
+                                                📤 HOD
+                                            </button>
+                                            <button
+                                                onClick={() => setActionModal({ leaveId: leave._id, action: 'Reject' })}
+                                                className="btn btn-danger btn-sm btn-full"
+                                            >
+                                                ❌ Reject
+                                            </button>
                                         </>
                                     )}
-                                    <button onClick={() => downloadPDF(leave)} className="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 w-full text-center mt-2">Download PDF</button>
+                                    <button
+                                        onClick={() => generateLeavePDF(leave)}
+                                        className="btn btn-primary btn-sm btn-full"
+                                    >
+                                        📄 PDF
+                                    </button>
                                 </div>
                             </div>
                         ))
                     )}
                 </div>
             </main>
+
+            {/* Action Modal */}
+            {actionModal && (
+                <div className="modal-overlay">
+                    <div className="modal-box">
+                        <div className="modal-title">
+                            {actionModal.action === 'Approve' ? '✅' : actionModal.action === 'Reject' ? '❌' : '📤'}
+                            &nbsp;Confirm {actionModal.action}
+                        </div>
+                        <form onSubmit={handleProcess}>
+                            <div className="form-group">
+                                <label className="form-label">Comments (Optional)</label>
+                                <textarea
+                                    className="form-control"
+                                    style={{ height: '100px' }}
+                                    value={comments}
+                                    onChange={(e) => setComments(e.target.value)}
+                                    placeholder="Add reasoning or remarks..."
+                                ></textarea>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    onClick={() => setActionModal(null)}
+                                    className="btn btn-ghost"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className={`btn ${actionModal.action === 'Approve' ? 'btn-success' : actionModal.action === 'Reject' ? 'btn-danger' : 'btn-purple'}`}
+                                >
+                                    {actionModal.action} Leave
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -22,41 +22,54 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-md">
-                <h1 className="text-2xl font-bold text-center mb-6">Digital Leave Management</h1>
-                {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
+        <div className="login-page">
+            <div className="login-card">
+                {/* Brand */}
+                <div className="login-brand">
+                    <div className="login-brand-icon">🎓</div>
+                    <h1 className="login-title">LeaveSync</h1>
+                    <p className="login-subtitle">Digital Leave Management System</p>
+                </div>
+
+                {/* Error */}
+                {error && (
+                    <div className="login-error">
+                        <span>⚠️</span> {error}
+                    </div>
+                )}
+
+                {/* Form */}
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label className="form-label">Email Address</label>
                         <input
                             type="email"
                             required
-                            className="w-full mt-1 p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            className="form-control"
+                            placeholder="yourname@college.edu"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <div className="form-group">
+                        <label className="form-label">Password</label>
                         <input
                             type="password"
                             required
-                            className="w-full mt-1 p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            className="form-control"
+                            placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                         />
                     </div>
-                    <button
-                        type="submit"
-                        className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition"
-                    >
-                        Sign In
+                    <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: '0.5rem' }}>
+                        🚀 Sign In to Dashboard
                     </button>
-                    <div className="text-sm text-center mt-4">
-                        <a href="/register-hod" className="text-blue-600 hover:underline">HOD Initial Setup</a>
-                    </div>
                 </form>
+
+                <div className="login-link">
+                    First time setup? <a href="/register-hod">Register as HOD →</a>
+                </div>
             </div>
         </div>
     );
