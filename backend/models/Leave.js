@@ -28,6 +28,14 @@ const leaveSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  processedBy: {
+    type: String,
+    default: null,
+  },
+  processedAt: {
+    type: Date,
+    default: null,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Leave', leaveSchema);

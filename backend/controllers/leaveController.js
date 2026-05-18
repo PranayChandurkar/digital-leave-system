@@ -152,6 +152,8 @@ const processLeave = async (req, res) => {
         if (action === 'Forward') leave.status = 'Forwarded';
 
         leave.comments = comments || leave.comments;
+        leave.processedBy = `${req.user.name} (${req.user.role})`;
+        leave.processedAt = new Date();
         await leave.save();
 
         // Send Email Notifications
