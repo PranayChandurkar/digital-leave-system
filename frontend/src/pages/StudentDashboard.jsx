@@ -15,10 +15,23 @@ const StudentDashboard = () => {
     const [content, setContent] = useState('');
     const [aiPrompt, setAiPrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [policy, setPolicy] = useState(null);
 
     useEffect(() => {
         fetchLeaves();
+        fetchPolicy();
     }, []);
+
+    const fetchPolicy = async () => {
+        try {
+            const { data } = await api.get('/auth/leave-policy');
+            if (data.active) {
+                setPolicy(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch policy', error);
+        }
+    };
 
     const fetchLeaves = async () => {
         try {
@@ -136,6 +149,15 @@ const StudentDashboard = () => {
             <main className="main-content">
                 {/* Stats Bar */}
                 <div className="stats-bar">
+                    {policy && (
+                        <div className="stat-card" style={{ border: '2px solid #8b5cf6', background: '#f5f3ff' }}>
+                            <div className="stat-icon" style={{ background: '#ede9fe' }}>📊</div>
+                            <div className="stat-info">
+                                <div className="stat-value">{Math.max(0, policy.maxLeaves - policy.usedLeaves)} <span style={{fontSize:'0.5em', color: '#666'}}>left</span></div>
+                                <div className="stat-label">Term Limit: {policy.maxLeaves}</div>
+                            </div>
+                        </div>
+                    )}
                     <div className="stat-card">
                         <div className="stat-icon" style={{ background: '#eef2ff' }}>📋</div>
                         <div className="stat-info">

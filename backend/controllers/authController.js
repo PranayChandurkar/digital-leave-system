@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Leave = require('../models/Leave');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
@@ -135,4 +136,65 @@ const getMyUsers = async (req, res) => {
     }
 }
 
-module.exports = { registerHOD, login, createUser, getMyUsers };
+// @desc    Update Leave Policy
+// @route   PUT /api/auth/leave-policy
+// @access  Private (Coordinator)
+const updateLeavePolicy = async (req, res) => {
+    try {
+        if (req.user.role !== 'Coordinator') {
+            return res.status(403).json({ message: 'Only Coordinators can set leave policy' });
+        }
+        const { durationFrom, durationTo, maxLeaves } = req.body;
+        
+        req.user.leavePolicy = { durationFrom, durationTo, maxLeaves };
+        await req.user.save();
+        
+        res.json(req.user.leavePolicy);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get Leave Policy
+// @route   GET /api/auth/leave-policy
+// @access  Private
+const getLeavePolicy = async (req, res) => {
+    try {
+        let coordinator;
+        if (req.user.role === 'Coordinator') {
+            coordinator = req.user;
+        } else if (req.user.role === 'Student') {
+            coordinator = await User.findById(req.user.createdBy);
+        } else {
+            return res.status(403).json({ message: 'Not applicable for this role' });
+        }
+
+        if (!coordinator || !coordinator.leavePolicy) {
+            return res.json({ active: false });
+        }
+
+        const policy = coordinator.leavePolicy;
+        
+        // Calculate used leaves for student
+        let usedLeaves = 0;
+        if (req.user.role === 'Student' && policy.durationFrom && policy.durationTo) {
+            usedLeaves = await Leave.countDocuments({
+                studentId: req.user._id,
+                createdAt: { $gte: policy.durationFrom, $lte: policy.durationTo },
+                status: { $nin: ['Cancelled', 'Rejected'] }
+            });
+        }
+
+        res.json({
+            active: !!(policy.durationFrom && policy.durationTo && policy.maxLeaves),
+            durationFrom: policy.durationFrom,
+            durationTo: policy.durationTo,
+            maxLeaves: policy.maxLeaves,
+            usedLeaves
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { registerHOD, login, createUser, getMyUsers, updateLeavePolicy, getLeavePolicy };

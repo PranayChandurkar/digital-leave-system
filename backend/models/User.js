@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null,
+  },
+  leavePolicy: {
+    durationFrom: { type: Date, default: null },
+    durationTo: { type: Date, default: null },
+    maxLeaves: { type: Number, default: null }
   }
 }, { timestamps: true });
 

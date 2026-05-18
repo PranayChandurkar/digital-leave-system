@@ -16,9 +16,63 @@ const CoordinatorDashboard = () => {
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
 
+    // Leave Policy
+    const [policy, setPolicy] = useState({ durationFrom: '', durationTo: '', maxLeaves: '' });
+    
+    // Students & History
+    const [myStudents, setMyStudents] = useState([]);
+    const [historyModal, setHistoryModal] = useState(null);
+    const [studentHistory, setStudentHistory] = useState([]);
+
     useEffect(() => {
         fetchLeaves();
+        fetchStudents();
+        fetchPolicy();
     }, []);
+
+    const fetchStudents = async () => {
+        try {
+            const { data } = await api.get('/auth/my-users');
+            setMyStudents(data);
+        } catch (error) {
+            console.error('Failed to fetch students', error);
+        }
+    };
+
+    const fetchPolicy = async () => {
+        try {
+            const { data } = await api.get('/auth/leave-policy');
+            if (data.active) {
+                setPolicy({
+                    durationFrom: data.durationFrom.split('T')[0],
+                    durationTo: data.durationTo.split('T')[0],
+                    maxLeaves: data.maxLeaves
+                });
+            }
+        } catch (error) {
+            console.error('Failed to fetch policy', error);
+        }
+    };
+
+    const handleSavePolicy = async (e) => {
+        e.preventDefault();
+        try {
+            await api.put('/auth/leave-policy', policy);
+            alert('Leave policy updated successfully');
+        } catch (error) {
+            alert(error.response?.data?.message || 'Error saving policy');
+        }
+    };
+
+    const openStudentHistory = async (student) => {
+        setHistoryModal(student);
+        try {
+            const { data } = await api.get(`/leaves/student/${student._id}`);
+            setStudentHistory(data);
+        } catch (error) {
+            console.error('Failed to fetch student history', error);
+        }
+    };
 
     const fetchLeaves = async () => {
         try {
@@ -250,6 +304,55 @@ const CoordinatorDashboard = () => {
                         ))
                     )}
                 </div>
+                {/* Leave Policy Settings */}
+                <div className="section-header" style={{ marginTop: '40px' }}>
+                    <h2 className="section-title">Leave Policy Settings</h2>
+                </div>
+                <div className="form-card">
+                    <form onSubmit={handleSavePolicy}>
+                        <div className="form-grid-3">
+                            <div className="form-group">
+                                <label className="form-label">Term Start Date</label>
+                                <input type="date" required className="form-control" value={policy.durationFrom} onChange={e => setPolicy({...policy, durationFrom: e.target.value})} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Term End Date</label>
+                                <input type="date" required className="form-control" value={policy.durationTo} onChange={e => setPolicy({...policy, durationTo: e.target.value})} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Max Leaves Allowed</label>
+                                <input type="number" required min="0" className="form-control" value={policy.maxLeaves} onChange={e => setPolicy({...policy, maxLeaves: e.target.value})} />
+                            </div>
+                        </div>
+                        <div className="form-actions">
+                            <button type="submit" className="btn btn-primary">💾 Save Policy</button>
+                        </div>
+                    </form>
+                </div>
+
+                {/* My Students */}
+                <div className="section-header" style={{ marginTop: '40px' }}>
+                    <h2 className="section-title">My Students</h2>
+                </div>
+                <div className="leave-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+                    {myStudents.length === 0 ? (
+                        <div className="empty-state">No students added yet.</div>
+                    ) : (
+                        myStudents.map(student => (
+                            <div key={student._id} className="leave-card" style={{ cursor: 'pointer', borderLeft: '4px solid #0ea5e9' }} onClick={() => openStudentHistory(student)}>
+                                <div className="leave-card-body">
+                                    <div className="leave-card-student">{student.name}</div>
+                                    <div className="leave-card-meta" style={{ marginTop: '10px' }}>
+                                        <span>📧 {student.email}</span>
+                                    </div>
+                                    <div className="leave-card-meta" style={{ marginTop: '10px', color: '#6366f1' }}>
+                                        <strong>Click to view history →</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
             </main>
 
             {/* Action Modal */}
@@ -287,6 +390,41 @@ const CoordinatorDashboard = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            {/* Student History Modal */}
+            {historyModal && (
+                <div className="modal-overlay">
+                    <div className="modal-box" style={{ maxWidth: '800px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+                        <div className="modal-title">
+                            📖 {historyModal.name}'s Leave History
+                        </div>
+                        <div className="leave-list" style={{ marginTop: '20px' }}>
+                            {studentHistory.length === 0 ? (
+                                <div className="empty-state">No leaves found for this student.</div>
+                            ) : (
+                                studentHistory.map(leave => (
+                                    <div key={leave._id} className={getLeaveCardClass(leave.type)}>
+                                        <div className="leave-card-body">
+                                            <div className="leave-card-meta">
+                                                <span className={getTypeBadgeClass(leave.type)}>{leave.type}</span>
+                                                <span className={getStatusBadgeClass(leave.status)}>{leave.status}</span>
+                                                <span className="leave-card-date">🕐 {format(new Date(leave.createdAt), 'PPpp')}</span>
+                                            </div>
+                                            <div className="leave-card-content">{leave.content}</div>
+                                            {leave.comments && (
+                                                <div className="leave-card-meta" style={{ marginTop: '10px', color: '#666' }}>
+                                                    <strong>Remarks:</strong> {leave.comments}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button onClick={() => setHistoryModal(null)} className="btn btn-ghost">Close</button>
+                        </div>
                     </div>
                 </div>
             )}

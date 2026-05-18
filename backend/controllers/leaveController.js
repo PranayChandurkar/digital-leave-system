@@ -10,6 +10,27 @@ const submitLeave = async (req, res) => {
     try {
         const { type, content, attachmentUrl } = req.body;
 
+        const student = await User.findById(req.user._id);
+        const coordinator = await User.findById(student.createdBy);
+
+        if (coordinator && coordinator.leavePolicy && coordinator.leavePolicy.durationFrom) {
+            const policy = coordinator.leavePolicy;
+            const now = new Date();
+            // Check if current date is within policy duration
+            if (now >= new Date(policy.durationFrom) && now <= new Date(policy.durationTo)) {
+                // Count leaves
+                const usedLeaves = await Leave.countDocuments({
+                    studentId: req.user._id,
+                    createdAt: { $gte: policy.durationFrom, $lte: policy.durationTo },
+                    status: { $nin: ['Cancelled', 'Rejected'] }
+                });
+
+                if (usedLeaves >= policy.maxLeaves) {
+                    return res.status(400).json({ message: `Leave limit reached. You have already used ${usedLeaves} out of ${policy.maxLeaves} leaves for the current term.` });
+                }
+            }
+        }
+
         const newLeave = await Leave.create({
             studentId: req.user._id,
             type,
@@ -18,9 +39,6 @@ const submitLeave = async (req, res) => {
         });
 
         // Notify Student and Coordinator
-        const student = await User.findById(req.user._id);
-        const coordinator = await User.findById(student.createdBy);
-
         if (coordinator) {
             await sendEmail(coordinator.email, 'New Leave Application', `Student ${student.name} has submitted a new leave application.`);
         }
@@ -210,4 +228,26 @@ CRITICAL: NEVER use placeholder brackets like [Start Date], [End Date], [Name], 
     }
 };
 
-module.exports = { submitLeave, editLeave, cancelLeave, getMyLeaves, getQueue, processLeave, generateLeaveText };
+// @desc    Get student's leave history
+// @route   GET /api/leaves/student/:id
+// @access  Private (Coordinator, HOD)
+const getStudentHistory = async (req, res) => {
+    try {
+        const studentId = req.params.id;
+        
+        // Authorization check
+        if (req.user.role === 'Coordinator') {
+            const student = await User.findById(studentId);
+            if (!student || student.createdBy.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ message: 'Not authorized to view this student\'s history' });
+            }
+        }
+
+        const leaves = await Leave.find({ studentId }).sort({ createdAt: -1 });
+        res.json(leaves);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { submitLeave, editLeave, cancelLeave, getMyLeaves, getQueue, processLeave, generateLeaveText, getStudentHistory };
