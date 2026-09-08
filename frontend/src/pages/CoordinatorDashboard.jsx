@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import { format } from 'date-fns';
@@ -21,8 +22,7 @@ const CoordinatorDashboard = () => {
     
     // Students & History
     const [myStudents, setMyStudents] = useState([]);
-    const [historyModal, setHistoryModal] = useState(null);
-    const [studentHistory, setStudentHistory] = useState([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchLeaves();
@@ -64,14 +64,8 @@ const CoordinatorDashboard = () => {
         }
     };
 
-    const openStudentHistory = async (student) => {
-        setHistoryModal(student);
-        try {
-            const { data } = await api.get(`/leaves/student/${student._id}`);
-            setStudentHistory(data);
-        } catch (error) {
-            console.error('Failed to fetch student history', error);
-        }
+    const openStudentHistory = (student) => {
+        navigate(`/coordinator/student/${student._id}/history`, { state: { student } });
     };
 
     const fetchLeaves = async () => {
@@ -365,8 +359,9 @@ const CoordinatorDashboard = () => {
                         </div>
                         <form onSubmit={handleProcess}>
                             <div className="form-group">
-                                <label className="form-label">Comments (Optional)</label>
+                                <label className="form-label">Comments <span style={{color:'red'}}>*</span></label>
                                 <textarea
+                                    required
                                     className="form-control"
                                     style={{ height: '100px' }}
                                     value={comments}
@@ -390,41 +385,6 @@ const CoordinatorDashboard = () => {
                                 </button>
                             </div>
                         </form>
-                    </div>
-                </div>
-            {/* Student History Modal */}
-            {historyModal && (
-                <div className="modal-overlay">
-                    <div className="modal-box" style={{ maxWidth: '800px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
-                        <div className="modal-title">
-                            📖 {historyModal.name}'s Leave History
-                        </div>
-                        <div className="leave-list" style={{ marginTop: '20px' }}>
-                            {studentHistory.length === 0 ? (
-                                <div className="empty-state">No leaves found for this student.</div>
-                            ) : (
-                                studentHistory.map(leave => (
-                                    <div key={leave._id} className={getLeaveCardClass(leave.type)}>
-                                        <div className="leave-card-body">
-                                            <div className="leave-card-meta">
-                                                <span className={getTypeBadgeClass(leave.type)}>{leave.type}</span>
-                                                <span className={getStatusBadgeClass(leave.status)}>{leave.status}</span>
-                                                <span className="leave-card-date">🕐 {format(new Date(leave.createdAt), 'PPpp')}</span>
-                                            </div>
-                                            <div className="leave-card-content">{leave.content}</div>
-                                            {leave.comments && (
-                                                <div className="leave-card-meta" style={{ marginTop: '10px', color: '#666' }}>
-                                                    <strong>Remarks:</strong> {leave.comments}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                        <div className="modal-footer">
-                            <button onClick={() => setHistoryModal(null)} className="btn btn-ghost">Close</button>
-                        </div>
                     </div>
                 </div>
             )}

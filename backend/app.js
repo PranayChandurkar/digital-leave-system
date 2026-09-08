@@ -14,8 +14,12 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/leaves', leaveRoutes);
 
-app.get('/', (req, res) => {
-    res.send('Leave Management API is running');
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Backend is running"
+  });
 });
+
 
 module.exports = app;

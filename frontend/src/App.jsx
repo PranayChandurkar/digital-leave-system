@@ -8,6 +8,7 @@ import RegisterHOD from './pages/RegisterHOD';
 import StudentDashboard from './pages/StudentDashboard';
 import CoordinatorDashboard from './pages/CoordinatorDashboard';
 import HODDashboard from './pages/HODDashboard';
+import StudentHistory from './pages/StudentHistory';
 
 function App() {
   return (
@@ -26,6 +27,12 @@ function App() {
           <Route path="/coordinator" element={
             <ProtectedRoute allowedRoles={['Coordinator']}>
               <CoordinatorDashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/coordinator/student/:id/history" element={
+            <ProtectedRoute allowedRoles={['Coordinator', 'HOD']}>
+              <StudentHistory />
             </ProtectedRoute>
           } />
           

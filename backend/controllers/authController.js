@@ -134,7 +134,7 @@ const getMyUsers = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-}
+} 
 
 // @desc    Update Leave Policy
 // @route   PUT /api/auth/leave-policy

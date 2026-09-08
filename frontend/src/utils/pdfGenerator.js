@@ -26,7 +26,7 @@ export const generateLeavePDF = (leave) => {
                     <strong>To:</strong><br/>
                     Coordinator / Head of Department<br/>
                 </p>
-                <div style="position: relative; margin-bottom: 20px;">
+                <div style="position: relative; margin-bottom: 20px; padding-bottom: 5%;">
                     <div style="white-space: pre-wrap; margin-top: 15px;">${leave.content}</div>
                     
                     <div style="margin-top: 0;">

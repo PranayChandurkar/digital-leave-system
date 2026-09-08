@@ -246,8 +246,9 @@ const HODDashboard = () => {
                         </div>
                         <form onSubmit={handleProcess}>
                             <div className="form-group">
-                                <label className="form-label">Comments (Optional)</label>
+                                <label className="form-label">Comments <span style={{color:'red'}}>*</span></label>
                                 <textarea
+                                    required
                                     className="form-control"
                                     style={{ height: '100px' }}
                                     value={comments}

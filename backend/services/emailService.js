@@ -1,12 +1,19 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail', // You can change this to any supported service
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+let transporter = null;
+
+const getTransporter = () => {
+    if (!transporter) {
+        transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+    }
+    return transporter;
+};
 
 const sendEmail = async (to, subject, text) => {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -15,7 +22,7 @@ const sendEmail = async (to, subject, text) => {
     }
 
     try {
-        const info = await transporter.sendMail({
+        const info = await getTransporter().sendMail({
             from: `"Leave Management System" <${process.env.EMAIL_USER}>`,
             to,
             subject,

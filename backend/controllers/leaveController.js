@@ -117,7 +117,10 @@ const getQueue = async (req, res) => {
             const students = await User.find({ createdBy: req.user._id }).select('_id');
             const studentIds = students.map(s => s._id);
 
-            const leaves = await Leave.find({ studentId: { $in: studentIds } })
+            const leaves = await Leave.find({ 
+                studentId: { $in: studentIds },
+                status: 'Pending'
+            })
                 .populate('studentId', 'name email')
                 .sort({ createdAt: -1 });
             return res.json(leaves);
@@ -162,6 +165,10 @@ const processLeave = async (req, res) => {
             if (!['Approve', 'Reject'].includes(action)) {
                 return res.status(400).json({ message: 'Invalid action for HOD' });
             }
+        }
+
+        if (!comments || comments.trim() === '') {
+            return res.status(400).json({ message: 'Remarks are compulsory to process this leave.' });
         }
 
         // Apply Action
