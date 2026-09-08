@@ -1,38 +1,36 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-let transporter = null;
+let resend = null;
 
-const getTransporter = () => {
-    if (!transporter) {
-        transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 587,
-            secure: false,
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
+const getResendClient = () => {
+    if (!resend) {
+        resend = new Resend(process.env.RESEND_API_KEY);
     }
-    return transporter;
+    return resend;
 };
 
 const sendEmail = async (to, subject, text) => {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
         console.log('Email credentials not set. Simulated email:', { to, subject });
         return;
     }
 
     try {
-        const info = await getTransporter().sendMail({
-            from: `"Leave Management System" <${process.env.EMAIL_USER}>`,
+        const { data, error } = await getResendClient().emails.send({
+            from: process.env.EMAIL_FROM,
             to,
             subject,
             text,
         });
-        console.log('Email sent: %s', info.messageId);
+
+        if (error) {
+            console.error('Resend API error:', error.message || error);
+            return;
+        }
+
+        console.log('Email sent: %s', data?.id);
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('Error sending email:', error.message || error);
     }
 };
 
