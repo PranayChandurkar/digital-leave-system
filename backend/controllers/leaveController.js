@@ -221,7 +221,7 @@ Conclude with a proper closing like "Thanking you in advance for your understand
 CRITICAL: NEVER use placeholder brackets like [Start Date], [End Date], [Name], or [Reason]. Instead, write naturally (e.g., "for the required duration", "during my absence"). Do not leave any fill-in-the-blanks. Provide ONLY the letter content.`;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.5-flash-lite',
             contents: `Reason for leave: ${prompt}. Please generate the formal letter.`,
             config: {
                 systemInstruction: systemInstruction,
