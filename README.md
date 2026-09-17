@@ -272,34 +272,6 @@ npm run dev
 
 ---
 
-## 📡 API Endpoints Reference
-
-### Authentication & Users (`/api/auth`)
-
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/register-hod` | Public (Singleton) | Register initial Head of Department account |
-| `POST` | `/login` | Public | Authenticate user & issue signed JWT |
-| `POST` | `/create-user` | HOD / Coordinator | HOD creates Coordinators; Coordinators create Students |
-| `GET` | `/my-users` | HOD / Coordinator | Retrieve list of users created by requester |
-| `PUT` | `/leave-policy`| Coordinator | Set academic term dates & max allowed leave count |
-| `GET` | `/leave-policy`| Authenticated | Get current leave policy and student's used leaves |
-
-### Leave Management (`/api/leaves`)
-
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/` | Student | Submit a new leave application |
-| `POST` | `/generate` | Student | Generate formal letter using Gemini AI from prompt |
-| `GET` | `/my-leaves` | Student | View personal leave application history |
-| `PUT` | `/:id` | Student | Edit pending leave content or type |
-| `DELETE`| `/:id` | Student | Cancel pending leave request |
-| `GET` | `/queue` | Coordinator / HOD | Pending leaves (for Coordinator) or Forwarded leaves (for HOD) |
-| `PUT` | `/:id/process`| Coordinator / HOD | Approve, Reject, or Forward leave with remarks |
-| `GET` | `/student/:id`| Coordinator / HOD | Retrieve complete leave history of a given student |
-
----
-
 ## 🗄️ Database Models
 
 ### `User`
@@ -375,24 +347,6 @@ Each route is guarded using double-layer Express middleware:
   }));
   ```
 - [x] **SPA Routing Rules**: `public/_redirects` (`/* /index.html 200`) ensures Netlify serves deep React Router paths without 404 errors.
-
----
-
-## 🌐 Production Deployment
-
-### Frontend (Netlify)
-- **Live URL**: [https://aileavesync.netlify.app](https://aileavesync.netlify.app)
-- **Build Command**: `npm run build`
-- **Publish Directory**: `dist`
-- **Environment Variables**:
-  - `VITE_BASE_URL`: `https://your-backend-api.onrender.com/api`
-- **Routing**: Handled via `public/_redirects` for seamless React Router DOM navigation.
-
-### Backend (Render / Cloud Host)
-- **Build Command**: `npm install`
-- **Start Command**: `node server.js`
-- **Health Check**: `GET /health` returns `{ "status": "ok", "message": "Backend is running" }`
-- **Background Cron**: Runs automatically on the server instance (`0 0 * * *`) for daily auto-cancellations.
 
 ---
 
