@@ -334,20 +334,6 @@ Each route is guarded using double-layer Express middleware:
 | **Approve / Reject Action**| ❌ | ✅ | ✅ | Mandatory non-empty remarks audited with timestamp & actor |
 | **Download PDF Pass** | ✅ | ✅ | ✅ | Client-side export formatted from authenticated records |
 
-### 3. Production Hardening Checklist
-- [x] **Password Hashing**: Stored using `bcryptjs` with salt round factor of 10.
-- [x] **Singleton HOD Account**: Prevents arbitrary administrative takeovers by blocking further HOD registrations once one exists.
-- [x] **IDOR Prevention**: All state modifications verify database ownership before mutations occur.
-- [x] **CORS Configuration**: Restrict allowed origins to your production domain:
-  ```javascript
-  // backend/app.js
-  app.use(cors({
-    origin: ['https://aileavesync.netlify.app', 'http://localhost:5173'],
-    credentials: true
-  }));
-  ```
-- [x] **SPA Routing Rules**: `public/_redirects` (`/* /index.html 200`) ensures Netlify serves deep React Router paths without 404 errors.
-
 ---
 
 ## 📄 License
