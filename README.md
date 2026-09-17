@@ -6,14 +6,12 @@
 
 ---
 
-### 🌐 Live Deployment
-<!-- ================================================================= -->
-<!-- 🚀 PLACE YOUR LIVE DEMO LINK BELOW                                 -->
-<!-- ================================================================= -->
+### 🌐 Live Production Deployment
 
-[![Live Demo](https://img.shields.io/badge/LIVE_DEMO-Click_Here_to_Visit-success?style=for-the-badge&logo=vercel&logoColor=white)](https://aileavesync.netlify.app)
+[![Live on Netlify](https://img.shields.io/badge/LIVE_DEMO-aileavesync.netlify.app-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)](https://aileavesync.netlify.app)
 
-**Live Link URL:** `https://aileavesync.netlify.app` 
+**Frontend Application URL:** [https://aileavesync.netlify.app](https://aileavesync.netlify.app)  
+**Backend API Status:** `Production Ready` *(Health Check: `/health`)*
 
 ---
 
@@ -40,14 +38,18 @@
   - [Automations & Integrations](#4-automations--integrations)
 - [Tech Stack](#-tech-stack)
 - [Project Directory Structure](#-project-directory-structure)
-- [Getting Started](#-getting-started)
+- [Getting Started & Local Setup](#-getting-started--local-setup)
   - [Prerequisites](#prerequisites)
   - [Backend Setup](#1-backend-setup)
   - [Frontend Setup](#2-frontend-setup)
 - [Environment Variables](#-environment-variables)
 - [API Endpoints Reference](#-api-endpoints-reference)
 - [Database Models](#-database-models)
-- [Security & Access Matrix](#-security--access-matrix)
+- [Security, Credentials & Route Protection](#-security-credentials--route-protection)
+  - [Zero Credential Leak Guarantee](#1-zero-credential-leak-guarantee)
+  - [Route Protection & RBAC Matrix](#2-route-protection--rbac-matrix)
+  - [Production Hardening Checklist](#3-production-hardening-checklist)
+- [Production Deployment](#-production-deployment)
 - [License](#-license)
 
 ---
@@ -132,6 +134,7 @@ flowchart TD
 - **PDF Generation**: [html2pdf.js](https://ekoopmans.github.io/html2pdf.js/)
 - **HTTP Client**: [Axios](https://axios-http.com/)
 - **Date Utilities**: [date-fns](https://date-fns.org/)
+- **Hosting**: [Netlify](https://www.netlify.com/)
 
 ### Backend
 - **Runtime**: [Node.js](https://nodejs.org/) (CommonJS)
@@ -161,7 +164,7 @@ digital-leave-system/
 │   └── server.js           # HTTP server initialization & DB connector
 │
 ├── frontend/
-│   ├── public/             # Static public assets
+│   ├── public/             # Static public assets & _redirects for Netlify
 │   ├── src/
 │   │   ├── components/     # Protected route wrappers & common UI elements
 │   │   ├── context/        # React AuthContext for state & token management
@@ -179,7 +182,7 @@ digital-leave-system/
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started & Local Setup
 
 ### Prerequisites
 Make sure you have installed:
@@ -254,18 +257,18 @@ npm run dev
 
 | Variable | Required | Description | Example |
 | :--- | :---: | :--- | :--- |
-| `PORT` | Optional | Port for the Express server (defaults to 3000) | `3000` |
-| `MONGO_URI` | **Yes** | MongoDB connection connection string | `mongodb+srv://...` |
-| `JWT_SECRET` | **Yes** | Secret key for signing authentication tokens | `secret_jwt_key_123` |
+| `PORT` | Optional | Port for Express server (default: 3000) | `3000` |
+| `MONGO_URI` | **Yes** | MongoDB connection string (Atlas or Local) | `mongodb+srv://...` |
+| `JWT_SECRET` | **Yes** | Secret key for signing authorization tokens | `super_secure_jwt_random_key` |
 | `GEMINI_API_KEY` | **Yes** | Google Gemini API key for AI letter generation | `AIzaSy...` |
-| `RESEND_API_KEY` | Optional | API key for transactional emails via Resend | `re_...` |
+| `RESEND_API_KEY` | Optional | API key for transactional email notifications | `re_...` |
 | `EMAIL_FROM` | Optional | Verified sender address for Resend emails | `LeaveSync <onboarding@resend.dev>` |
 
 ### Frontend (`frontend/.env`)
 
 | Variable | Required | Description | Example |
 | :--- | :---: | :--- | :--- |
-| `VITE_BASE_URL` | **Yes** | Base URL pointing to the backend API | `http://localhost:3000/api` |
+| `VITE_BASE_URL` | **Yes** | API endpoint base URL | `https://your-backend.onrender.com/api` |
 
 ---
 
@@ -275,10 +278,10 @@ npm run dev
 
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/register-hod` | Public | Register initial Head of Department account |
-| `POST` | `/login` | Public | Authenticate user & receive JWT token |
+| `POST` | `/register-hod` | Public (Singleton) | Register initial Head of Department account |
+| `POST` | `/login` | Public | Authenticate user & issue signed JWT |
 | `POST` | `/create-user` | HOD / Coordinator | HOD creates Coordinators; Coordinators create Students |
-| `GET` | `/my-users` | HOD / Coordinator | Retrieve list of all users created by requester |
+| `GET` | `/my-users` | HOD / Coordinator | Retrieve list of users created by requester |
 | `PUT` | `/leave-policy`| Coordinator | Set academic term dates & max allowed leave count |
 | `GET` | `/leave-policy`| Authenticated | Get current leave policy and student's used leaves |
 
@@ -331,20 +334,65 @@ npm run dev
 
 ---
 
-## 🔐 Security & Access Matrix
+## 🛡️ Security, Credentials & Route Protection
 
-| Feature / Action | Student | Class Coordinator | Head of Department (HOD) |
-| :--- | :---: | :---: | :---: |
-| Apply for Leave | ✅ | ❌ | ❌ |
-| AI Leave Letter Generator | ✅ | ❌ | ❌ |
-| Download Sanctioned PDF Pass | ✅ | ✅ | ✅ |
-| Create Students | ❌ | ✅ | ❌ |
-| Set Term Leave Quota | ❌ | ✅ | ❌ |
-| Review Pending Leaves | ❌ | ✅ | ❌ |
-| Forward to HOD | ❌ | ✅ | ❌ |
-| Create Coordinators | ❌ | ❌ | ✅ |
-| Review Forwarded Leaves | ❌ | ❌ | ✅ |
-| Final Approval / Rejection | ❌ | ✅ | ✅ |
+### 1. Zero Credential Leak Guarantee
+- **Server-Side Isolation**: All sensitive credentials (`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, `RESEND_API_KEY`) run strictly inside the Node.js backend. They are **never packaged or exposed** in the frontend client build.
+- **Client Bundle Safety**: The React application bundle hosted on Netlify only consumes `VITE_BASE_URL`. Authentication tokens are standard short-lived JWT strings transmitted over encrypted HTTPS headers (`Authorization: Bearer <token>`).
+- **Git Hygiene**: Environment files (`.env`) are ignored via `.gitignore`. The repository only maintains sanitised `.env.example` templates with empty placeholders.
+
+### 2. Route Protection & RBAC Matrix
+
+Each route is guarded using double-layer Express middleware:
+1. `protect`: Decodes and verifies the incoming Bearer JWT against `process.env.JWT_SECRET`.
+2. `authorize(...roles)`: Validates that the authenticated user's role matches permitted roles.
+
+| Route / Capability | Student | Class Coordinator | Head of Department (HOD) | Protection Rules |
+| :--- | :---: | :---: | :---: | :--- |
+| **Apply for Leave** | ✅ | ❌ | ❌ | Validates active policy quotas; ties `studentId` to verified token |
+| **AI Letter Drafting** | ✅ | ❌ | ❌ | Prompt processed server-side via Gemini API; key remains hidden |
+| **View Own Leaves** | ✅ | ❌ | ❌ | Scoped strictly to `studentId: req.user._id` (Anti-IDOR) |
+| **Edit / Cancel Leave** | ✅ | ❌ | ❌ | Only permitted if `status === 'Pending'` and owner matches |
+| **Create Students** | ❌ | ✅ | ❌ | Coordinators can strictly create `Student` roles |
+| **Set Term Leave Quota** | ❌ | ✅ | ❌ | Coordinators set maximum limits for their student cohort |
+| **Review Pending Queue** | ❌ | ✅ | ❌ | Coordinators only see students they personally created |
+| **Forward Leave to HOD** | ❌ | ✅ | ❌ | Escalates sensitive applications to departmental authority |
+| **Create Coordinators** | ❌ | ❌ | ✅ | HOD can strictly create `Coordinator` roles |
+| **Review Forwarded Queue**| ❌ | ❌ | ✅ | HOD reviews escalated applications across coordinators |
+| **Approve / Reject Action**| ❌ | ✅ | ✅ | Mandatory non-empty remarks audited with timestamp & actor |
+| **Download PDF Pass** | ✅ | ✅ | ✅ | Client-side export formatted from authenticated records |
+
+### 3. Production Hardening Checklist
+- [x] **Password Hashing**: Stored using `bcryptjs` with salt round factor of 10.
+- [x] **Singleton HOD Account**: Prevents arbitrary administrative takeovers by blocking further HOD registrations once one exists.
+- [x] **IDOR Prevention**: All state modifications verify database ownership before mutations occur.
+- [x] **CORS Configuration**: Restrict allowed origins to your production domain:
+  ```javascript
+  // backend/app.js
+  app.use(cors({
+    origin: ['https://aileavesync.netlify.app', 'http://localhost:5173'],
+    credentials: true
+  }));
+  ```
+- [x] **SPA Routing Rules**: `public/_redirects` (`/* /index.html 200`) ensures Netlify serves deep React Router paths without 404 errors.
+
+---
+
+## 🌐 Production Deployment
+
+### Frontend (Netlify)
+- **Live URL**: [https://aileavesync.netlify.app](https://aileavesync.netlify.app)
+- **Build Command**: `npm run build`
+- **Publish Directory**: `dist`
+- **Environment Variables**:
+  - `VITE_BASE_URL`: `https://your-backend-api.onrender.com/api`
+- **Routing**: Handled via `public/_redirects` for seamless React Router DOM navigation.
+
+### Backend (Render / Cloud Host)
+- **Build Command**: `npm install`
+- **Start Command**: `node server.js`
+- **Health Check**: `GET /health` returns `{ "status": "ok", "message": "Backend is running" }`
+- **Background Cron**: Runs automatically on the server instance (`0 0 * * *`) for daily auto-cancellations.
 
 ---
 
